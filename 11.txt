@@ -1,0 +1,659 @@
+留言板
+MoniController.php
+<?php
+namespace App\Http\Controllers\admin;
+use Illuminate\Http\Request as request;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
+
+class MoniController extends Controller
+{
+ public function moni_type()
+{
+ $data = DB::select("select * from moni_type");
+  return view('admin.moni_type',['data'=>$data]);
+}
+public function moni_xinxi(request $request)
+{
+//分页从第一页展示
+ $page = $request->get('page')?$request->get('page'):1;
+//每页三条数据
+ $size = 3;
+//查询总条数
+ $count = count(DB::select("select * from moni_xinxi"));
+ $end = ceil($count/$size);
+//设置偏移量
+ $offset = ($page-1)*$size;
+//查询id
+ $id = $request->get('id');
+//执行偏移量
+ $data = DB::select("select * from moni_xinxi where uid='$id' limit $offset,$size");
+//返回数据
+  return view('admin/moni_xinxi',['data'=>$data,'id'=>$id,'end'=>$end]);
+  }
+ public function moni_add(request $request)
+ {
+//获取content
+ $content = $request->post('content');
+//获取id
+ $id = $request->post('id');
+//执行添加
+ $data = DB::insert("insert into moni_xinxi (uid,`content`) values ('$id','$content')");
+//判断  return返回数据
+  if ($data){
+ return 1;
+   }else{
+ return 2;
+   }
+ }
+ public function ajaxlist(request $request)
+  {
+ $page = $request->post('page')?$request->post('page'):1;
+ $size = 3;
+ $count = count(DB::select("select * from moni_xinxi"));
+ $end = ceil($count/$size);
+ $offset = ($page-1)*$size;
+ $id = $request->post('id');
+ $data = DB::select("select * from moni_xinxi where uid='$id' limit $offset,$size");
+   return json_encode($data);
+    }
+}
+/  *  /  *   /  *   /   * /
+moni_type.php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <title>主题页面</title>
+</head>
+<body>
+@foreach($data as $key=>$val)
+<a href="moni_xinxi?id=<?php echo $val->id?>">{{$val->title}}</a>
+@endforeach
+</body>
+</html>
+
+/  *  /  *   /  *   /   * /
+moni_xinxi.php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <title>留言列表页面</title>
+</head>
+<body>
+<h1>留言列表</h1>
+<table class="table table-striped">
+ @foreach($data as $key=>$val)
+ <tr>
+ <td>{{$val->content}}</td>
+ </tr>
+  {{--<tr></tr>--}}
+   @endforeach
+</table>
+<input type="hidden" id="a_page" name="a_page" value="1">
+<input type="hidden" id="last_page" name="last_page" value="{{$end}}">
+<button><a href="#" class="page">加載更多</a></button>
+</body>
+</html>
+
+<hr>
+<h1>留言界面</h1>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+<body>
+  <table>
+ <tr>
+   <input type="hidden" id="fgsd"  value="<?php echo $id?>">
+  <textarea name="content" id="content" cols="60" rows="2"></textarea>
+  </tr>
+  <tr>
+  <td><input type="button" id="btn" value="提交"></td>
+ <td><input type="reset" value="重置"></td>
+ </tr>
+    </table>
+</body>
+</html>
+
+<script src="{{asset('js/jquery-3.3.1.min.js')}}"></script>
+<script>
+    $(document).on("click",".page",function () {
+    var a_val = $(this).text();
+   var id = $("#fgsd").val();
+   var a_page = $("#a_page").val();
+   var last_page = $("#last_page").val();
+   if (a_val=="加載更多"){
+   var page = parseInt(a_page)+1 > last_page ? last_page : parseInt(a_page)+1;
+  }
+  $.ajax({
+   url:"ajaxlist",
+ dataType:"json",
+ type:"post",
+ data:{
+ page:page,
+ id:id,
+ },
+  success:function (data) {
+  var str = "";
+  $.each(data,function (key,val) {
+   str+='<tr>'
+   str+='<td>'+val.content+'</td>'
+   str+='</tr>'
+ })
+  // $("#tb").html(str);
+ $("#a_page").val(page);
+ $("tr:eq(1)").after(str);
+            }
+        })
+    })
+
+    $(document).on("click","#btn",function () {
+   var content = $("#content").val();
+   var id = $("#fgsd").val();
+  $.ajax({
+  url:"moni_add",
+  type:"post",
+  dataType:"json",
+  data:{
+  content:content,
+  id:id,
+            },
+   success:function (data) {
+  if (data==1){
+ alert("添加成功")
+ location.href="";
+   } else {
+    alert("添加失敗")
+}
+    }
+  })
+    })
+</script>
+
+/ *  /   *   /   *  /   *  /   *  /
+
+博客
+bowencontroller.php
+<?php
+
+namespace App\Http\Controllers\bowen;
+
+use Illuminate\Http\Request as request;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
+
+class BowenController extends Controller
+{
+    public function bo_add()
+    {
+        return view('bowen.bo_add');
+    }
+    public function bo_adddo(request $request)
+    {
+//        echo 1;die;
+//        $title = $request->post('title');
+        $img = $request->file('imagefile');
+        $imgname = $img->getClientOriginalName();
+        $all = $img->move('uploads',$imgname);
+        $data = $request->only(['title']);
+        $data['imagefile']=$all;
+        $res = DB::table('bo_list')->insert($data);
+        if ($res){
+            return redirect()->route('bowen.bo_list');
+        }
+    }
+    public function bo_list()
+    {
+        $data = DB::select("select * from bo_list");
+        return view('bowen.bo_list',['data'=>$data]);
+    }
+    public function bo_message(request $request)
+    {
+        $id = $request->post('id');
+        $data = DB::select("select * from bo_message where bid='$id'");
+        $data1 = DB::select("select * from bo_pinglun");
+        return view('bowen.bo_message',['id'=>$id,'data'=>$data,'data1'=>$data1]);
+    }
+    public function bo_message_do(request $request)
+    {
+       $content =  $request->post('content');
+       $data = DB::insert("insert into bo_pinglun (content) values ('$content')");
+       if ($data){
+           return redirect()->route('bowen.bo_message');
+       }
+    }
+}
+/  *  /  *   /  *   /   * /
+bo_add.php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>博文添加</title>
+</head>
+<body>
+<h4>添加頁面</h4>
+<form action="{{route('bowen.bo_adddo')}}" method="post" enctype="multipart/form-data">
+    <table class="table table-striped">
+        @csrf
+        <tr>
+            <td>图片上传：</td>
+            <td><input type="file" name="imagefile" id="imagefile"></td>
+        </tr>
+        <tr>
+            <td>标题：</td>
+            <td><input type="text" name="title" id="title"></td>
+        </tr>
+        <tr>
+            <td colspan="2" align="center"><input type="submit" value="添加"></td>
+        </tr>
+    </table>
+</form>
+</body>
+</html>
+/  *  /  *   /  *   /   * /
+bo_list.php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>博文列表</title>
+</head>
+<body>
+<h3>博文列表</h3>
+<table class="table table-striped" border="1">
+    @foreach($data as $key=>$val)
+    <tr>
+        <td><img src="../{{$val->imagefile}}" width="80px" alt=""></td>
+        <td>
+            {{$val->title}}<br>
+            {{$val->created_at}}
+        </td>
+        <td><a href="bo_message?id={{$val->id}}">点击查看</a></td>
+    </tr>
+        @endforeach
+</table>
+</body>
+</html>
+
+/  *  /  *   /  *   /   * /
+bo_message.php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+<body>
+<center>
+<h2>博文标题</h2>
+<input type="hidden" id="uid" value="<?php echo $id?>">
+<table class="table table-striped">
+    @foreach($data as $key=>$val)
+    <div style="width: 400px;height: 200px;border: 1px solid #eee">
+        <p>
+            Author:{{$val->author}}    &nbsp;&nbsp;&nbsp;
+            时 间：{{$val->created_at}}
+        </p>
+        <p>{{$val->content}}</p>
+    </div>
+        @endforeach
+</table>
+    <hr>
+    <h3>评论区</h3>
+    <table>
+        <div style="width: 400px;height: 200px;border: 1px solid #eee">
+            @foreach($data1 as $k=>$v)
+            <p>
+                {{date("Y-m-d H:i:s",time())}}<br>
+                {{$v->content}}
+            </p>
+            @endforeach
+        </div>
+    </table>
+    <hr>
+    <h3>发表评论</h3>
+    <form action="bo_message_do" method="post">
+        <div  style="width: 400px;height: 100px;border: 1px solid #eee">
+            @csrf
+        <tr>
+            <td>內容：<textarea name="content" id="content" cols="30" rows="2"></textarea></td>
+        </tr>
+        <tr>
+            <td><input type="submit" value="发布"></td>
+        </tr>
+        </div>
+    </form>
+</center>
+</body>
+</html>
+
+
+增删改查
+
+
+
+Controller
+
+
+<?php
+
+
+namespace App\Http\Controllers;
+
+use Illuminate\Support\Facades\Request;
+use App\Details;
+use DB;
+
+class DetailsController extends Controller
+{
+    /**
+     * 登录
+     */
+    public function login()
+    {
+        return view('login');
+    }
+
+    public function do_login()
+    {
+        $data = Request::all();
+        $username = $data['username'];
+        $pwd = $data['pwd'];
+        $res = DB::table('user')->where(['username' => $username, 'pwd' => $pwd])->get()->first();
+        if ($res) {
+            return redirect('show');
+        } else {
+            echo "登录失败";
+        }
+    }
+
+    /**
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View|\think\response\View
+     * 展示
+     */
+    public function show()
+    {
+        $search = Request::input('search');
+        $page = Request::input('page', 1);
+        $count = DB::table('details')->count();
+        $limit = 3;
+        $ye = ceil($count / $limit);
+        $list['last'] = $page <= 1 ? 1 : $page - 1;
+        $list['next'] = $page >= $ye ? $ye : $page + 1;
+        $list['ye'] = $ye;
+        $offset = ($page - 1) * $limit;
+        $data = DB::table('details')->where('name', 'like', '%' . $search . '%')->offset($offset)->limit($limit)->get()->toArray();
+        return view('show', ['data' => $data, 'list' => $list]);
+    }
+
+    /**
+     * 添加数据
+     */
+    public function add()
+    {
+        return view('add');
+    }
+
+    public function add_do()
+    {
+        $data = Request::all();
+        $name = $data['name'];
+        $tags = $data['tags'];
+        $res = DB::table('details')->insert(['name' => $name, 'tags' => $tags]);
+        if ($res) {
+            return redirect('show');
+        } else {
+            echo "添加失败";
+        }
+    }
+
+    /**
+     * 删除数据
+     */
+    public function del()
+    {
+        $data = Request::all();
+        $id = $data['id'];
+        $data = DB::table('details')->where('id', '=', $id)->delete();
+        if ($data) {
+            return redirect('show');
+        } else {
+            echo "删除失败";
+        }
+    }
+
+    /**
+     * 修改数据
+     */
+    public function update()
+    {
+        $data = Request::all();
+        $id = $data['id'];
+        $data = DB::table('details')->where('id', '=', $id)->get()->first();
+        return view('update', ['data' => $data]);
+    }
+
+    public function update_do()
+    {
+        $data = Request::all();
+        $id = $data['id'];
+        $name = $data['name'];
+        $tags = $data['tags'];
+        DB::table('details')->where('id', $id)->update(['name' => $name, 'tags' => $tags]);
+        return redirect('show');
+    }
+}
+
+Add
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+<body>
+ <form action="add_do" method="get">
+    <table>
+        <tr>
+            <td>专业</td>
+            <td>
+                <select name="name">
+                    <option value="">--未选择--</option>
+                    <option value="PHP">PHP</option>
+                    <option value="JAVA">JAVA</option>
+                    <option value=".NET">.NET</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td>学院</td>
+            <td>
+                <select name="tags">
+                    <option value="">--未选择--</option>
+                    <option value="软工学院">软工学院</option>
+                    <option value="云计算学院">云计算学院</option>
+                    <option value="物联网学院">物联网学院</option>
+                </select>
+            </td>
+        </tr>
+    </table>
+    <input type="submit" name="确认添加">
+</form>
+</body>
+</html>
+
+
+
+
+
+Add
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+<body>
+ <form action="add_do" method="get">
+    <table>
+        <tr>
+            <td>专业</td>
+            <td>
+                <select name="name">
+                    <option value="">--未选择--</option>
+                    <option value="PHP">PHP</option>
+                    <option value="JAVA">JAVA</option>
+                    <option value=".NET">.NET</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td>学院</td>
+            <td>
+                <select name="tags">
+                    <option value="">--未选择--</option>
+                    <option value="软工学院">软工学院</option>
+                    <option value="云计算学院">云计算学院</option>
+                    <option value="物联网学院">物联网学院</option>
+                </select>
+            </td>
+        </tr>
+    </table>
+    <input type="submit" name="确认添加">
+</form>
+</body>
+</html>
+
+login
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>login</title>
+</head>
+<body>
+<form action="do_login" method="get">
+    {{csrf_field()}}
+    <table>
+        <tr>
+            <td>用户</td>
+            <td><input type="text" name="username"></td>
+        </tr>
+        <tr>
+            <td>密码</td>
+            <td><input type="password" name="pwd"></td>
+        </tr>
+    </table>
+    <input type="submit" name="登录">
+</form>
+</body>
+</html>
+
+
+
+show
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <link rel="stylesheet" href="http://apps.bdimg.com/libs/bootstrap/3.3.0/css/bootstrap.min.css">
+</head>
+<body>
+<center>
+    <form action="show" method="get" class="form-inline">
+        <div class="form-group">
+            <label for="exampleInputName2">专业名称</label>
+            <input type="text" name="search" class="form-control" placeholder="请输入~">
+        </div>
+        <button type="submit" class="btn btn-large btn-primary">点击搜索</button>
+    </form>
+    <table class="table-bordered table-striped table-hover">
+        <tr>
+            <td>语言</td>
+            <td>学院</td>
+            <td>操作</td>
+        </tr>
+        <?php foreach ($data as $key => $value): ?>
+        <tr>
+            <td><?php echo $value->name ?></td>
+            <td><?php echo $value->tags ?></td>
+            <td>
+                <a href="del?id=<?php echo $value->id ?>">删除</a>
+                <a href="update?id=<?php echo $value->id ?>">修改</a>
+                <a href="add?id=<?php echo $value->id ?>">添加</a>
+            </td>
+        </tr>
+        <?php endforeach ?>
+        <tr>
+            <td colspan="4">
+                <a href="./page?page=1">首页</a>
+                <a href="./page?page={{$list['last']}}">上一页</a>
+                <a href="./page?page={{$list['next']}}">下一页</a>
+                <a href="./page?page={{$list['ye']}}">尾页</a>
+            </td>
+        </tr>
+    </table>
+</center>
+</body>
+</html>
+
+
+update
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+<body>
+<form action="update_do" method="get">
+    {{csrf_field()}}
+    <input type="hidden" name="id" value="{{$data->id}}">
+    <table>
+        <tr>
+            <td>专业</td>
+            <td><input type="text" name="name" value="{{$data->name}}"></td>
+        </tr>
+        <tr>
+            <td>学院</td>
+            <td><input type="text" name="tags" value="{{$data->tags}}"></td>
+        </tr>
+    </table>
+    <input type="submit" name="确认修改">
+</form>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
